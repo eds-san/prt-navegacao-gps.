@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PRT v1.0 — Teste GPS e Rota</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827}
+.app{max-width:720px;margin:auto;background:#fff;min-height:100vh}
+header{background:#111827;color:#fff;padding:18px}h1{font-size:22px;margin:0}header p{margin:5px 0 0;color:#cbd5e1;font-size:13px}
+main{padding:15px}.card{border:1px solid #d1d5db;border-radius:12px;padding:14px;margin-bottom:12px}
+label{font-size:13px;font-weight:700;display:block;margin-bottom:7px}
+input{width:100%;padding:14px;border:1px solid #9ca3af;border-radius:9px;font-size:16px}
+button{width:100%;padding:14px;margin-top:9px;border:0;border-radius:9px;font-size:15px;font-weight:700}
+.primary{background:#2563eb;color:#fff}.secondary{background:#e5e7eb;color:#111827}
+button:disabled{opacity:.5}
+.row{display:flex;gap:9px;align-items:center}.lamp{width:13px;height:13px;border-radius:50%;background:#f59e0b;flex:none}.ok{background:#16a34a}.bad{background:#dc2626}
+#gpsText{font-size:14px}.status{padding:10px;border-radius:8px;background:#eef2ff;font-size:13px;line-height:1.4;margin-top:10px}
+#map{height:380px;border-radius:12px;margin-top:12px}.stats{display:flex;gap:8px;margin-top:10px}.stat{flex:1;background:#f3f4f6;padding:11px;text-align:center;border-radius:8px}.stat b{display:block;font-size:18px}.stat small{color:#6b7280}
+.log{font-family:monospace;font-size:11px;background:#111827;color:#d1fae5;padding:10px;border-radius:8px;margin-top:10px;max-height:150px;overflow:auto;white-space:pre-wrap}
+</style>
+
+<style>
+/* Ajustes extras para uso em celular */
+html, body { width:100%; min-height:100%; }
+body { -webkit-text-size-adjust:100%; }
+button, input { min-height:48px; touch-action:manipulation; }
+button { cursor:pointer; }
+#map { min-height:320px; height:45vh; }
+@media (max-width:480px){
+  .app{width:100%;max-width:none}
+  header{padding:16px}
+  h1{font-size:20px}
+  main{padding:12px}
+  .card{padding:12px;margin-bottom:10px}
+  input{font-size:16px}
+  #map{height:42vh;min-height:280px}
+  .stats{gap:6px}
+  .stat{padding:10px 6px}
+}
+@media (orientation:landscape) and (max-height:600px){
+  #map{height:55vh}
+}
+</style>
+
+
+<style>
+:root{
+  --bg:#eef1f4; --panel:#fff; --ink:#111827; --muted:#64748b;
+  --primary:#1769e0; --ok:#16a34a; --danger:#dc2626;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;min-height:100%;background:var(--bg);font-family:Arial,sans-serif;-webkit-text-size-adjust:100%}
+body{overscroll-behavior:none}
+.app{max-width:900px;margin:auto;background:var(--panel);min-height:100vh}
+header{
+  position:sticky;top:0;z-index:1000;
+  background:#111827;color:#fff;padding:14px 16px;
+  padding-top:max(14px,env(safe-area-inset-top));
+  box-shadow:0 2px 8px rgba(0,0,0,.18)
+}
+h1{font-size:21px;margin:0;letter-spacing:.1px}
+header p{margin:4px 0 0;color:#cbd5e1;font-size:12px}
+main{padding:10px 12px 18px}
+.card{border:1px solid #d7dce2;border-radius:14px;padding:12px;margin-bottom:10px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+label{font-size:12px;font-weight:800;display:block;margin-bottom:7px;color:#334155}
+input{
+  width:100%;height:54px;padding:12px 14px;border:1px solid #aeb7c2;border-radius:11px;
+  font-size:17px;background:#fff;color:#111827;outline:none
+}
+input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(23,105,224,.12)}
+button{
+  width:100%;min-height:54px;padding:12px;margin-top:8px;border:0;border-radius:11px;
+  font-size:16px;font-weight:800;touch-action:manipulation;-webkit-tap-highlight-color:transparent
+}
+.primary{background:var(--primary);color:#fff}
+.secondary{background:#e8edf3;color:#111827}
+button:disabled{opacity:.5}
+.row{display:flex;gap:9px;align-items:center}
+.lamp{width:14px;height:14px;border-radius:50%;background:#f59e0b;flex:none;box-shadow:0 0 0 3px rgba(245,158,11,.12)}
+.ok{background:var(--ok);box-shadow:0 0 0 3px rgba(22,163,74,.12)}
+.bad{background:var(--danger);box-shadow:0 0 0 3px rgba(220,38,38,.12)}
+#gpsText{font-size:14px;line-height:1.25}
+.status{padding:10px;border-radius:9px;background:#eef2ff;font-size:13px;line-height:1.35;margin-top:9px}
+#map{height:55vh;min-height:340px;max-height:650px;border-radius:14px;margin-top:10px;overflow:hidden}
+.stats{display:flex;gap:8px;margin-top:10px}
+.stat{flex:1;background:#f1f4f7;padding:12px 8px;text-align:center;border-radius:10px}
+.stat b{display:block;font-size:22px;line-height:1.1}
+.stat small{color:#64748b;font-size:11px;font-weight:700}
+.log{font-family:monospace;font-size:10px;background:#111827;color:#d1fae5;padding:9px;border-radius:8px;margin-top:10px;max-height:120px;overflow:auto;white-space:pre-wrap}
+.cab-tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.cab-tools button{margin-top:0;min-height:48px;font-size:14px}
+.nav-badge{
+  display:inline-flex;align-items:center;gap:6px;margin-top:7px;padding:5px 8px;
+  border-radius:999px;background:#e8f1ff;color:#1754a6;font-size:11px;font-weight:800
+}
+#map + .stats{margin-bottom:2px}
+.leaflet-control-zoom a{width:44px!important;height:44px!important;line-height:44px!important;font-size:24px!important}
+@media (min-width:700px){
+  main{padding:16px}
+  .card{padding:14px}
+  .cab-tools{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:520px){
+  #map{height:52vh;min-height:320px}
+  header{padding-left:14px;padding-right:14px}
+  h1{font-size:19px}
+  .stats .stat b{font-size:21px}
+}
+@media (orientation:landscape) and (max-height:600px){
+  #map{height:62vh;min-height:250px}
+  header{padding:8px 12px}
+  main{padding:8px 10px}
+  .card{padding:9px}
+}
+</style>
+
+</head>
+<body>
+<div class="app">
+<header><h1>PRT — Navegação para Caminhão</h1><p>v1.0 • GPS + destino + rota</p><span class="nav-badge">● MODO CABINE • INTERFACE OTIMIZADA</span></header>
+<main>
+<div class="card">
+<label>GPS / ORIGEM AUTOMÁTICA</label>
+<div class="row"><span id="lamp" class="lamp"></span><span id="gpsText">Aguardando GPS...</span></div>
+<button id="btnGPS" class="secondary">ATIVAR GPS</button>
+</div>
+
+<div class="card">
+<label for="destino">DESTINO</label>
+<input id="destino" placeholder="Ex.: Avenida Paulista, 1000, São Paulo - SP">
+<button id="btnBuscar" class="secondary">PESQUISAR DESTINO</button>
+<button id="btnRota" class="primary" disabled>CALCULAR ROTA</button>
+<div id="status" class="status">Primeiro ative o GPS.</div>
+</div>
+
+<div id="map"></div>
+<div class="cab-tools">
+  <button id="btnMinhaPosicao" class="secondary">📍 MINHA POSIÇÃO</button>
+  <button id="btnLimparRota" class="secondary">✕ LIMPAR ROTA</button>
+</div>
+<div id="stats" class="stats" style="display:none">
+<div class="stat"><b id="dist">—</b><small>DISTÂNCIA</small></div>
+<div class="stat"><b id="time">—</b><small>TEMPO</small></div>
+</div>
+<div id="log" class="log">Diagnóstico iniciado...</div>
+</main>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let gps=null,dest=null,routeLayer=null,gpsMarker=null,destMarker=null;
+const map=L.map('map').setView([-23.5505,-46.6333],11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+
+function log(s){$('log').textContent+=`\\n${new Date().toLocaleTimeString()} ${s}`;$('log').scrollTop=$('log').scrollHeight}
+function status(s,type=''){ $('status').textContent=s; $('status').style.background=type==='ok'?'#dcfce7':type==='bad'?'#fee2e2':'#eef2ff' }
+function setGPS(p){
+ gps={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:p.coords.accuracy};
+ $('lamp').className='lamp ok';
+ $('gpsText').textContent=`GPS encontrado • ${gps.lat.toFixed(6)}, ${gps.lon.toFixed(6)} • precisão ±${Math.round(gps.accuracy)} m`;
+ if(!gpsMarker) gpsMarker=L.marker([gps.lat,gps.lon]).addTo(map).bindPopup('Sua localização');
+ else gpsMarker.setLatLng([gps.lat,gps.lon]);
+ if(!dest){map.setView([gps.lat,gps.lon],15)}
+ $('btnRota').disabled=!dest;
+ status('GPS encontrado. Agora informe e pesquise o destino.','ok');
+ log('GPS OK');
+}
+function gpsError(e){
+  $('lamp').className='lamp bad';
+  $('btnGPS').disabled=false;
+  $('btnGPS').textContent='TENTAR GPS NOVAMENTE';
+
+  let m='Não foi possível obter sua localização.';
+  let detail='';
+
+  if(e && e.code===1){
+    m='Permissão de localização negada.';
+    detail='Permita a localização para este navegador nas configurações do celular e tente novamente.';
+  }else if(e && e.code===2){
+    m='Localização indisponível.';
+    detail='Ative a localização/GPS do celular e tente novamente.';
+  }else if(e && e.code===3){
+    m='Tempo esgotado para obter o GPS.';
+    detail='Tente novamente em um local com melhor sinal de GPS.';
+  }
+
+  $('gpsText').textContent=m;
+  status(m+' '+detail,'bad');
+  log('GPS ERRO: '+m);
+}
+
+function activateGPS(){
+  if(!navigator.geolocation){
+    gpsError({code:2});
+    return;
+  }
+
+  if(window.isSecureContext===false && location.hostname!=='localhost'){
+    $('lamp').className='lamp bad';
+    $('gpsText').textContent='GPS requer conexão segura (HTTPS).';
+    status('Abra esta página usando HTTPS para permitir o acesso à localização.','bad');
+    log('GPS ERRO: HTTPS necessário.');
+    return;
+  }
+
+  $('btnGPS').disabled=true;
+  $('btnGPS').textContent='LOCALIZANDO...';
+  $('lamp').className='lamp';
+  $('gpsText').textContent='Solicitando localização...';
+  status('Permita o acesso à localização quando o navegador solicitar.');
+  log('Solicitando GPS...');
+
+  navigator.geolocation.getCurrentPosition(
+    function(position){
+      setGPS(position);
+      $('btnGPS').disabled=false;
+      $('btnGPS').textContent='ATUALIZAR GPS';
+    },
+    gpsError,
+    {enableHighAccuracy:true,timeout:30000,maximumAge:0}
+  );
+}
+
+async function geocode(){
+ let q=$('destino').value.trim();
+ if(!q){status('Digite um destino antes de pesquisar.','bad');$('destino').focus();return false}
+ $('btnBuscar').disabled=true;$('btnBuscar').textContent='PESQUISANDO...';status('Pesquisando o endereço...');
+ log('Destino pesquisado: '+q);
+ try{
+   const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=br&accept-language=pt-BR&q='+encodeURIComponent(q);
+   const r=await fetch(url,{headers:{Accept:'application/json'}});
+   log('Nominatim HTTP '+r.status);
+   if(!r.ok)throw new Error('HTTP '+r.status);
+   const a=await r.json();
+   if(!a.length)throw new Error('NAO_ENCONTRADO');
+   dest={lat:+a[0].lat,lon:+a[0].lon,name:a[0].display_name};
+   if(destMarker)map.removeLayer(destMarker);
+   destMarker=L.marker([dest.lat,dest.lon]).addTo(map).bindPopup(dest.name);
+   map.setView([dest.lat,dest.lon],15);
+   status('Destino encontrado: '+dest.name,'ok');log('DESTINO OK '+dest.lat+','+dest.lon);
+   $('btnRota').disabled=!gps;
+   return true;
+ }catch(e){
+   log('DESTINO ERRO '+e.message);
+   status(e.message==='NAO_ENCONTRADO'?'Endereço não encontrado. Tente incluir cidade e estado.':'Não foi possível pesquisar o destino. Verifique sua internet.','bad');
+   dest=null;return false;
+ }finally{$('btnBuscar').disabled=false;$('btnBuscar').textContent='PESQUISAR DESTINO'}
+}
+async function calculate(){
+ if(!gps){status('GPS ainda não encontrado.','bad');return}
+ if(!dest){if(!(await geocode()))return}
+ $('btnRota').disabled=true;$('btnRota').textContent='CALCULANDO...';status('Calculando rota...');
+ try{
+   const u=`https://router.project-osrm.org/route/v1/driving/${gps.lon},${gps.lat};${dest.lon},${dest.lat}?overview=full&geometries=geojson`;
+   const r=await fetch(u);log('OSRM HTTP '+r.status);
+   if(!r.ok)throw new Error('HTTP '+r.status);
+   const d=await r.json();if(d.code!=='Ok'||!d.routes?.length)throw new Error('SEM_ROTA');
+   const rt=d.routes[0],pts=rt.geometry.coordinates.map(x=>[x[1],x[0]]);
+   if(routeLayer)map.removeLayer(routeLayer);
+   routeLayer=L.polyline(pts,{weight:6}).addTo(map);
+   map.fitBounds(routeLayer.getBounds().pad(.12));
+   $('dist').textContent=(rt.distance/1000).toFixed(1).replace('.',',')+' km';
+   let min=Math.round(rt.duration/60);$('time').textContent=min<60?min+' min':Math.floor(min/60)+'h '+min%60+'min';
+   $('stats').style.display='flex';status('ROTA CALCULADA COM SUCESSO.','ok');log('ROTA OK');
+ }catch(e){log('ROTA ERRO '+e.message);status('Não foi possível calcular a rota.','bad')}
+ finally{$('btnRota').disabled=!gps||!dest;$('btnRota').textContent='CALCULAR ROTA'}
+}
+
+$('btnMinhaPosicao').onclick=function(){
+  if(!gps){
+    status('GPS ainda não encontrado. Toque em ATIVAR GPS.','bad');
+    return;
+  }
+  map.setView([gps.lat,gps.lon],16);
+  if(gpsMarker) gpsMarker.openPopup();
+  status('Mapa centralizado na sua posição.','ok');
+};
+
+$('btnLimparRota').onclick=function(){
+  if(routeLayer){map.removeLayer(routeLayer);routeLayer=null;}
+  $('stats').style.display='none';
+  dest=null;
+  if(destMarker){map.removeLayer(destMarker);destMarker=null;}
+  $('btnRota').disabled=true;
+  status(gps?'GPS ativo. Informe um novo destino.':'Primeiro ative o GPS.');
+  log('ROTA/LIMPAR');
+};
+
+$('btnGPS').onclick=activateGPS;
+$('btnBuscar').onclick=geocode;
+$('btnRota').onclick=calculate;
+$('destino').addEventListener('keydown',e=>{if(e.key==='Enter')geocode()});
+</script>
+</body>
+</html>
